@@ -1,6 +1,6 @@
 module github.com/pinealctx/ranger
 
-go 1.17
+go 1.23
 
 require (
 	github.com/urfave/cli/v2 v2.10.3
