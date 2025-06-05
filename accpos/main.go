@@ -12,6 +12,7 @@ func main() {
 		Commands: cli.Commands{
 			filterAccCmd,
 			scanAccPosCmd,
+			checkAccPosCmd,
 		},
 	}
 	var err = app.Run(os.Args)
