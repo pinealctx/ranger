@@ -67,7 +67,8 @@ func scanAccountPositions(inputFile string, threshold float64) error {
 						}
 					}
 					if needLog {
-						fmt.Printf("Account positions from same source: %+v, diff: %+v\n\n", acc.WrittenTime, diff.OutRatioString(threshold))
+						fmt.Printf("Account positions from same source: %+v -> %+v, diff: %+v\n\n",
+							preAcc.WrittenTime, acc.WrittenTime, diff.OutRatioString(threshold))
 						fmt.Printf("%+v\n\n", preAcc.JsonString())
 						fmt.Printf("%+v\n\n", acc.JsonString())
 					}

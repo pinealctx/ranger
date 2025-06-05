@@ -37,7 +37,7 @@ func filterAccAction(c *cli.Context) error {
 
 func filterAccData(inputFile string, account string) error {
 	// 模式1: outAccountPositions for account:FTWW266
-	pattern := `\{"eventTime":"[^"]+","exchange":"[^"]+","positionMode":"[^"]+","accountId":"([^"]+)".*\}`
+	pattern := `\{"eventTime":"[^"]+","exchange":"[^"]+","positionMode":"[^"]+","accountId":"([^"]+)","transactionId":"[^"]+".*\}`
 	re := regexp.MustCompile(pattern)
 	return scanFileAsLine(inputFile, func(line string) error {
 		// 使用正则表达式匹配包含 "outAccountPositions for account:" 的行

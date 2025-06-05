@@ -205,7 +205,7 @@ func (x *CustomerAccountPositions) DiffSourceString(other *CustomerAccountPositi
 		sb.WriteString(fmt.Sprintf("Currency: %s -> %s; ", other.Currency, x.Currency))
 	}
 	if x.Balance != other.Balance {
-		sb.WriteString(fmt.Sprintf("Balance: %.2f -> %.2f; ", other.Balance, x.Balance))
+		sb.WriteString(fmt.Sprintf("Balance: %.2f, %.2f -> %.2f; ", other.Balance-x.Balance, other.Balance, x.Balance))
 	}
 	if x.Leverage != other.Leverage {
 		sb.WriteString(fmt.Sprintf("Leverage: %d -> %d; ", other.Leverage, x.Leverage))
