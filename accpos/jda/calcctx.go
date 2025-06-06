@@ -24,14 +24,18 @@ func (x *SymbolCtx) checkPosition(pos *Position) bool {
 	match := true
 	if isLong {
 		if x.Bid != pos.PriceCurr {
-			fmt.Printf("Positon currenct price is not matching symbol bid: %f != %f\n", x.Bid, pos.PriceCurr)
-			match = false
+			if pos.Qty != 0 {
+				fmt.Printf("Positon currenct price is not matching symbol bid: %f != %f\n", x.Bid, pos.PriceCurr)
+				match = false
+			}
 		}
 		pnl = pos.PriceCurr*qty - pos.Price*qty
 	} else {
 		if x.Ask != pos.PriceCurr {
-			fmt.Printf("Positon currenct price is not matching symbol ask: %f != %f\n", x.Ask, pos.PriceCurr)
-			match = false
+			if pos.Qty != 0 {
+				fmt.Printf("Positon currenct price is not matching symbol ask: %f != %f\n", x.Ask, pos.PriceCurr)
+				match = false
+			}
 		}
 		pnl = pos.Price*qty - pos.PriceCurr*qty
 	}
