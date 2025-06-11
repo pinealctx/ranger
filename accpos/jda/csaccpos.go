@@ -78,6 +78,7 @@ type CustomerAccountPositions struct {
 	AccountId                 string                            `json:"accountId"`
 	TransactionId             string                            `json:"transactionId"`
 	WrittenTime               TimeNano                          `json:"writtenTime"`
+	EodTime                   TimeNano                          `json:"eodTime"`
 	LastEventTime             TimeNano                          `json:"lastEventTime"`
 	PositionMap               map[string]*Position              `json:"positionMap"`
 	SymbolSnapMap             StringInt64Map[*SymbolSnap]       `json:"symbolSnapMap"`

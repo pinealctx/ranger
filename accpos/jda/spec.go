@@ -68,6 +68,11 @@ func (t TimeNano) String() string {
 	return tm.Format(timeFormat)
 }
 
+func (t TimeNano) Int64() int64 {
+	// 返回底层的 int64 时间戳
+	return int64(t)
+}
+
 // NumericString 是一个自定义类型，用于存储数值并支持与字符串的转换
 // 包括特殊格式如 "10K", "1M" 等
 type NumericString float64
@@ -155,4 +160,9 @@ func (si *StringInt64) UnmarshalJSON(data []byte) error {
 
 	*si = StringInt64(i)
 	return nil
+}
+
+func (si StringInt64) Int64() int64 {
+	// 返回底层的 int64 值
+	return int64(si)
 }

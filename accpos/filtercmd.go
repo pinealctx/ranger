@@ -51,20 +51,13 @@ func filterAccData(inputFile string, account string) error {
 }
 
 func scanFileAsLine(inputFile string, fn func(line string) error) error {
-	file, err := os.Open(inputFile)
+	file, scanner, err := getFileLineScaner(inputFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open file %s: %w", inputFile, err)
 	}
 	defer func() {
 		_ = file.Close()
 	}()
-
-	// 创建扫描器
-	scanner := bufio.NewScanner(file)
-	// 设置更大的缓冲区，因为JSON可能很长
-	const maxCapacity = 4 * 1024 * 1024 // 4MB
-	buf := make([]byte, maxCapacity)
-	scanner.Buffer(buf, maxCapacity)
 
 	// 逐行处理
 	for scanner.Scan() {
@@ -75,6 +68,19 @@ func scanFileAsLine(inputFile string, fn func(line string) error) error {
 		}
 	}
 	return scanner.Err()
+}
+
+func getFileLineScaner(inputFile string) (*os.File, *bufio.Scanner, error) {
+	file, err := os.Open(inputFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	scanner := bufio.NewScanner(file)
+	// 设置更大的缓冲区，因为JSON可能很长
+	const maxCapacity = 4 * 1024 * 1024 // 4MB
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	return file, scanner, nil
 }
 
 func matchAccountAndPosition(line string, account string, re *regexp.Regexp) (string, string, bool) {

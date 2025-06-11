@@ -13,6 +13,7 @@ func main() {
 			filterAccCmd,
 			scanAccPosCmd,
 			checkAccPosCmd,
+			checkEodCmd,
 		},
 	}
 	var err = app.Run(os.Args)
