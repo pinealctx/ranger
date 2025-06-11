@@ -41,8 +41,8 @@ func checkAccPositions(inputFile string) error {
 			return err
 		}
 
+		count += 1
 		if len(acc.SymbolSnapMap) > 0 {
-			count += 1
 			r := jda.NewRuntime(acc)
 			defer func() {
 				e := recover()

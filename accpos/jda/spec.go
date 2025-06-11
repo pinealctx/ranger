@@ -38,7 +38,15 @@ func (t *TimeNano) UnmarshalJSON(data []byte) error {
 	// 解析固定格式的时间字符串
 	tm, err := time.Parse(timeFormat, s)
 	if err != nil {
-		return err
+		// parse as long
+		var i int64
+		i, err = strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid time format: %s", s)
+		}
+		// 如果解析为整数成功，则将其视为纳秒时间戳
+		*t = TimeNano(i)
+		return nil
 	}
 
 	// 设置纳秒时间戳（UTC 时间）
