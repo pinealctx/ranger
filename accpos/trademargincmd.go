@@ -62,9 +62,10 @@ func checkTradeMargin(inputFile string) error {
 			marginAudit := jda.NewMarginAudit(orderCursor, marginAllow, accPos)
 			validate := marginAudit.Validate()
 			if !validate {
-				fmt.Printf("Margin audit failed at line %d: %+v\n", lineNum, line)
+				fmt.Printf("Margin audit failed at line %d: %+v\n\n", lineNum, line)
+				break
 			} else {
-				fmt.Printf("Margin audit passed at line %d: %+v\n", lineNum, line)
+				fmt.Printf("Margin audit passed at line %d\n\n", lineNum)
 			}
 		}
 	}

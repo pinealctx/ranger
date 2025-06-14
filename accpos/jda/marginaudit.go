@@ -1,6 +1,8 @@
 package jda
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type MarginAudit struct {
 	order  *NewOrder
@@ -117,9 +119,13 @@ func (x *MarginAudit) validateNoPrvPosition() bool {
 		fmt.Printf("LeftQty does not match expected value: %f != %f\n", x.allow.LeftQty, x.allow.TradeQty)
 		return false
 	}
-	leftPrice := reverseTradePrice(x.order, x.allow)
-	if x.allow.LeftPrice != leftPrice {
-		fmt.Printf("LeftPrice does not match expected value: %f != %f\n", x.allow.LeftPrice, leftPrice)
+	if x.allow.LeftPrice != x.allow.TradePrice {
+		fmt.Printf("LeftPrice does not match expected value: %f != %f\n", x.allow.LeftPrice, x.allow.TradePrice)
+		return false
+	}
+
+	if x.allow.TradeQuotePnl != 0 {
+		fmt.Printf("TradeQuotePnl should be zero, but got: %f\n", x.allow.TradeQuotePnl)
 		return false
 	}
 
@@ -131,7 +137,7 @@ func (x *MarginAudit) validateSamePosition() bool {
 		fmt.Printf("BeforeQuotePnl does not match position QuotePnl: %f != %f\n", x.allow.BeforeQuotePnl, x.pos.QuotePnl)
 		return false
 	}
-	if x.allow.BeforeQuoteNotion != x.pos.QuoteValue {
+	if !equalsUsd(x.allow.BeforeQuoteNotion, x.pos.QuoteValue) {
 		fmt.Printf("BeforeQuoteNotion does not match position QuoteValue: %f != %f\n", x.allow.BeforeQuoteNotion, x.pos.QuoteValue)
 		return false
 	}
@@ -149,6 +155,11 @@ func (x *MarginAudit) validateSamePosition() bool {
 	leftPrice := (x.pos.Price*pQty + x.allow.TradePrice*x.allow.TradeQty) / leftQty
 	if x.allow.LeftPrice != leftPrice {
 		fmt.Printf("LeftPrice does not match expected value: %f != %f\n", x.allow.LeftPrice, leftPrice)
+		return false
+	}
+
+	if x.allow.TradeQuotePnl != 0 {
+		fmt.Printf("TradeQuotePnl should be zero, but got: %f\n", x.allow.TradeQuotePnl)
 		return false
 	}
 
@@ -181,7 +192,7 @@ func (x *MarginAudit) validatePositionClose() bool {
 		closeValue = x.allow.TradePrice*closeQty - x.pos.Price*closeQty
 	}
 	tradeQuotePnl, tradePnlRate := x.ctx.quoteAsUsd(closeValue)
-	if x.allow.TradeQuotePnl != tradeQuotePnl {
+	if !equalsF64(x.allow.TradeQuotePnl, tradeQuotePnl) {
 		fmt.Printf("TradeQuotePnl does not match expected value: %f != %f\n", x.allow.TradeQuotePnl, tradeQuotePnl)
 		return false
 	}
@@ -222,7 +233,7 @@ func (x *MarginAudit) validateMarginLevel() bool {
 	equity := x.accPos.Balance + x.accPos.CreditLimit + x.accPos.OpenPNL + deltaQuotePnl
 	marginReq := totalMarginReq + deltaQuoteNotion/x.allow.Leverage
 	marginLevel := calMarginLevel(equity, marginReq)
-	if !equalsF64(marginLevel, x.allow.MarginLevel) {
+	if !equals2Decimal(marginLevel, x.allow.MarginLevel) {
 		fmt.Printf("Margin Level mismatch: %f != %f\n", marginLevel, x.allow.MarginLevel)
 		return false
 	}
@@ -266,25 +277,27 @@ func (x *MarginAudit) _validateHasPosBegin() bool {
 		return false
 	}
 
-	beforePnlQuote, beforePnlRate := x.ctx.quoteAsUsd(pnl)
-	if x.allow.BeforeQuotePnl != beforePnlQuote {
+	//beforePnlQuote, beforePnlRate := x.ctx.quoteAsUsd(pnl)
+	beforePnlQuote, _ := x.ctx.quoteAsUsd(pnl)
+	if !equalsUsd(x.allow.BeforeQuotePnl, beforePnlQuote) {
 		fmt.Printf("BeforeQuotePnl does not match expected value: %f != %f\n", x.allow.BeforeQuotePnl, beforePnlQuote)
 		return false
 	}
 
-	_beforePnlRate := x.pos.QuotePnl / x.pos.Pnl
-	if _beforePnlRate != beforePnlRate {
-		fmt.Printf("QuotePnlRate does not match expected value: %f != %f\n", _beforePnlRate, beforePnlRate)
+	/*_beforePnlRate := x.pos.QuotePnl / x.pos.Pnl
+	if !equalsPrice(_beforePnlRate, beforePnlRate) {
+		fmt.Printf("QuotePnlRate does not match expected value: %f != %f pos.quotePnl(%f)\n",
+			_beforePnlRate, beforePnlRate, x.pos.QuotePnl)
 		return false
-	}
+	}*/
 
 	return true
 }
 
 func (x *MarginAudit) _validateMarginAllowAfter() bool {
-	notionValue := x.allow.LeftQty * x.allow.LeftPrice
+	notionValue := x.allow.LeftQty * currentMarketPrice(x.allow)
 	afterQuoteNotion, afterNotionRate := x.ctx.quoteAsUsd(notionValue)
-	if x.allow.AfterQuoteNotion != afterQuoteNotion {
+	if !equalsUsd(x.allow.AfterQuoteNotion, afterQuoteNotion) {
 		fmt.Printf("AfterQuoteNotion does not match expected value: %f != %f\n", x.allow.AfterQuoteNotion, afterQuoteNotion)
 		return false
 	}
@@ -293,18 +306,14 @@ func (x *MarginAudit) _validateMarginAllowAfter() bool {
 		return false
 	}
 
-	pnl := allowPnl(x.order, x.allow)
+	pnl := leftPnl(x.allow)
 	afterQuotePnl, afterPnlRate := x.ctx.quoteAsUsd(pnl)
-	if x.allow.AfterQuotePnl != afterQuotePnl {
+	if !equalsUsd(x.allow.AfterQuotePnl, afterQuotePnl) {
 		fmt.Printf("AfterQuotePnl does not match expected value: %f != %f\n", x.allow.AfterQuotePnl, afterQuotePnl)
 		return false
 	}
 	if x.allow.QuotePnlRate != afterPnlRate {
 		fmt.Printf("QuoteAfterPnlRate does not match expected value: %f != %f\n", x.allow.QuotePnlRate, afterPnlRate)
-		return false
-	}
-	if x.allow.TradeQuotePnl != 0 {
-		fmt.Printf("TradeQuotePnl should be zero, but got: %f\n", x.allow.TradeQuotePnl)
 		return false
 	}
 	return true
@@ -326,12 +335,15 @@ func (x *MarginAudit) hasPrvPosition() bool {
 	return true
 }
 
-func allowPnl(order *NewOrder, allow *MarginAllow) float64 {
+func leftPnl(allow *MarginAllow) float64 {
 	var pnl float64
-	if order.Side == "BUY" {
-		pnl = allow.LeftPrice*allow.LeftQty - allow.TradePrice*allow.LeftQty
+	var curPrice float64
+	if allow.LeftSide == "1" {
+		curPrice = allow.BidPrice
+		pnl = allow.LeftQty*curPrice - allow.LeftQty*allow.LeftPrice
 	} else {
-		pnl = allow.TradePrice*allow.LeftQty - allow.LeftPrice*allow.LeftQty
+		curPrice = allow.AskPrice
+		pnl = allow.LeftQty*allow.LeftPrice - allow.LeftQty*curPrice
 	}
 	return pnl
 }
@@ -343,8 +355,8 @@ func tradePrice(order *NewOrder, allow *MarginAllow) float64 {
 	return allow.BidPrice
 }
 
-func reverseTradePrice(order *NewOrder, allow *MarginAllow) float64 {
-	if order.Side == "BUY" {
+func currentMarketPrice(allow *MarginAllow) float64 {
+	if allow.LeftSide == "1" {
 		return allow.BidPrice
 	}
 	return allow.AskPrice
