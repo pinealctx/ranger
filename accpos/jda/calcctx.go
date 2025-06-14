@@ -39,15 +39,15 @@ func (x *SymbolCtx) checkPosition(pos *Position) bool {
 		}
 		pnl = pos.Price*qty - pos.PriceCurr*qty
 	}
-	qutoePnl := x.quoteAsUsd(pnl)
-	quoteValue := x.quoteAsUsd(pos.PriceCurr * qty)
+	quotePnl, _ := x.quoteAsUsd(pnl)
+	quoteValue, _ := x.quoteAsUsd(pos.PriceCurr * qty)
 
 	if !equalsF64(pnl, pos.Pnl) {
 		fmt.Printf("Position PnL mismatch: %f != %f\n", pnl, pos.Pnl)
 		match = false
 	}
-	if !equalsUsd(qutoePnl, pos.QuotePnl) {
-		fmt.Printf("Position Quote PnL mismatch: %f != %f\n", qutoePnl, pos.QuotePnl)
+	if !equalsUsd(quotePnl, pos.QuotePnl) {
+		fmt.Printf("Position Quote PnL mismatch: %f != %f\n", quotePnl, pos.QuotePnl)
 		match = false
 	}
 	if !equalsUsd(quoteValue, pos.QuoteValue) {
@@ -67,7 +67,7 @@ func (x *SymbolCtx) checkOpenOrd(symbolId int64, oid string, ord *Order) bool {
 			price = x.Bid
 		}
 	}
-	quoteValue := x.quoteAsUsd(price * (ord.Qty.F64() - ord.CumQty))
+	quoteValue, _ := x.quoteAsUsd(price * (ord.Qty.F64() - ord.CumQty))
 	if !equalsUsd(quoteValue, ord.QuoteValue) {
 		fmt.Printf("Order SymbolId:%+v orderId: %+v Quote Value mismatch: %f != %f\n",
 			symbolId, oid, quoteValue, ord.QuoteValue)
@@ -84,31 +84,32 @@ func (x *SymbolCtx) feedRef(qt SymbolQuote, refId int64, refName string, refSnap
 	x.RefAsk = refSnap.Ask
 }
 
-func (x *SymbolCtx) quoteAsUsd(v float64) float64 {
+func (x *SymbolCtx) quoteAsUsd(v float64) (float64, float64) {
 	switch x.Quote {
 	case SqQuote:
-		return v
+		return v, 1
 	case SqBase:
 		// if v >= 0, use ask price, otherwise use bid price
 		if v >= 0 {
-			return v / x.Ask
+			return v / x.Ask, 1 / x.Ask
 		} else {
-			return v / x.Bid
+			return v / x.Bid, 1 / x.Bid
 		}
 	case SqRefQuote:
 		// if v >= 0, use ref bid price, otherwise use ref ask price
 		if v >= 0 {
-			return v * x.RefBid
+			return v * x.RefBid, x.RefBid
 		} else {
-			return v * x.RefAsk
+			return v * x.RefAsk, x.RefAsk
 		}
 	case SqRefBase:
 		// if v >= 0, use ref ask price, otherwise use ref bid price
 		if v >= 0 {
-			return v / x.RefAsk
+			return v / x.RefAsk, 1 / x.RefAsk
 		} else {
-			return v / x.RefBid
+			return v / x.RefBid, 1 / x.RefBid
 		}
+	default:
+		panic(fmt.Sprintf("Unknown quote type: %v", x.Quote))
 	}
-	panic(fmt.Sprintf("Unknown quote type: %v", x.Quote))
 }

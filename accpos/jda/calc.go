@@ -17,7 +17,8 @@ const (
 )
 
 var (
-	b85Conv = b85.NewBase85LongConverterS()
+	B85Conv = b85.NewBase85LongConverterS()
+	_       = SqUnknown
 )
 
 // SymbolQuote represents the type of symbol quote in the JDA system.
@@ -42,33 +43,13 @@ func NewRuntime(accPos *CustomerAccountPositions) *Runtime {
 }
 
 func (x *Runtime) CheckWhole() bool {
-	// check all positions
-	var totalNotion, totalPnl, totalMarginReq float64
-	match := true
-	itemMatch := true
-
-	for k, pos := range x.accPos.PositionMap {
-		ctx := x.buildSymbolCtxByName(k)
-		itemMatch = ctx.checkPosition(pos)
-		if !itemMatch {
-			match = false
-		}
-		totalNotion += pos.QuoteValue
-		totalPnl += pos.QuotePnl
-		totalMarginReq += pos.QuoteValue / ctx.Leverage
+	// check all positions and open orders
+	totalNotion, totalPnl, totalMarginReq, match := x.calAll()
+	if !match {
+		fmt.Println("Mismatch found in positions or open orders.")
+		return false
 	}
 
-	for k, ordMap := range x.accPos.ProcessingPositionHashMap {
-		symbolId := int64(k)
-		ctx := x.buildSymbolCtx(symbolId)
-		for oid, ord := range ordMap {
-			itemMatch = ctx.checkOpenOrd(symbolId, oid, ord)
-			totalMarginReq += ord.QuoteValue / ctx.Leverage
-			if !itemMatch {
-				match = false
-			}
-		}
-	}
 	if !equalsUsd(totalNotion, x.accPos.NotionalValue) {
 		fmt.Printf("Total Notional Value mismatch: %f != %f\n", totalNotion, x.accPos.NotionalValue)
 		match = false
@@ -97,6 +78,37 @@ func (x *Runtime) CheckWhole() bool {
 		match = false
 	}
 	return match
+}
+
+func (x *Runtime) calAll() (totalNotion, totalPnl, totalMarginReq float64, match bool) {
+	match = true
+	itemMatch := true
+
+	// check all positions
+	for k, pos := range x.accPos.PositionMap {
+		ctx := x.buildSymbolCtxByName(k)
+		itemMatch = ctx.checkPosition(pos)
+		if !itemMatch {
+			match = false
+		}
+		totalNotion += pos.QuoteValue
+		totalPnl += pos.QuotePnl
+		totalMarginReq += pos.QuoteValue / ctx.Leverage
+	}
+
+	// check all open orders
+	for k, ordMap := range x.accPos.ProcessingPositionHashMap {
+		symbolId := int64(k)
+		ctx := x.buildSymbolCtx(symbolId)
+		for oid, ord := range ordMap {
+			itemMatch = ctx.checkOpenOrd(symbolId, oid, ord)
+			totalMarginReq += ord.QuoteValue / ctx.Leverage
+			if !itemMatch {
+				match = false
+			}
+		}
+	}
+	return totalNotion, totalPnl, totalMarginReq, match
 }
 
 func (x *Runtime) buildSymbolCtxByName(symbolName string) *SymbolCtx {
@@ -149,7 +161,7 @@ func (x *Runtime) buildSymbolCtx(symbolId int64) *SymbolCtx {
 func (x *Runtime) buildSymbolMap() {
 	for k := range x.accPos.SymbolSnapMap {
 		symbolId := int64(k)
-		symbolName := b85Conv.AsString(symbolId)
+		symbolName := B85Conv.AsString(symbolId)
 		x.SymbolMap[symbolId] = symbolName
 		x.SymbolNameMap[symbolName] = symbolId
 	}
@@ -211,11 +223,11 @@ func calMarginLevel(equity, marginReq float64) float64 {
 	if equity < 0 {
 		return equity
 	}
-	if equity == 0 {
-		return 0
-	}
 	if marginReq <= 0 {
 		return MaxMarginLevel
+	}
+	if equity == 0 {
+		return 0
 	}
 	marginLevel := equity / marginReq
 	if marginLevel > MaxMarginLevel {

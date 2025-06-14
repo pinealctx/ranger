@@ -14,6 +14,10 @@ func main() {
 			scanAccPosCmd,
 			checkAccPosCmd,
 			checkEodCmd,
+			exceptCmd,
+			scanV2Cmd,
+			scanTradeCmd,
+			tradeMarginCmd,
 		},
 	}
 	var err = app.Run(os.Args)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pinealctx/ranger/accpos/jda"
-	"github.com/pinealctx/ranger/fxb/b85"
 	"github.com/urfave/cli/v2"
 	"regexp"
 )
@@ -28,8 +27,6 @@ var (
 
 	tierPricesRegex  = regexp.MustCompile(`EOD Tier Prices sent total: \d+, detail:(\{.*?\]\})`)
 	eodPositionRegex = regexp.MustCompile(`EOD for account:([^,]+), position details: (.+)$`)
-
-	b85Conv = b85.NewBase85LongConverterS()
 )
 
 func checkEodAction(ctx *cli.Context) error {
@@ -77,7 +74,7 @@ func checkEodData(tierName string, eodPrices *jda.TierPriceEod, eodPositions []*
 	m := make(map[int64]*jda.TierPrice)
 	for _, price := range eodPrices.TierPrices {
 		if price.TierId == tierName {
-			idx, err := b85Conv.Parse(price.SymbolId)
+			idx, err := jda.B85Conv.Parse(price.SymbolId)
 			if err != nil {
 				panic(err)
 			}
@@ -86,7 +83,7 @@ func checkEodData(tierName string, eodPrices *jda.TierPriceEod, eodPositions []*
 	}
 
 	for k, v := range m {
-		fmt.Printf("%s - %+v \n", b85Conv.AsString(k), v)
+		fmt.Printf("%s - %+v \n", jda.B85Conv.AsString(k), v)
 	}
 
 	var preEodTime jda.TimeNano
@@ -95,18 +92,18 @@ func checkEodData(tierName string, eodPrices *jda.TierPriceEod, eodPositions []*
 			p := m[k.Int64()]
 			if p == nil {
 				fmt.Printf("EOD position mismatch for account: %s, symbol: %s\n",
-					accPos.AccountId, b85Conv.AsString(k.Int64()))
+					accPos.AccountId, jda.B85Conv.AsString(k.Int64()))
 				continue
 			}
 			if p.Bid != snap.Bid || p.Ask != snap.Ask || p.SendingTime.Int64() != snap.SendingTime {
 				fmt.Printf("EOD position mismatch for account: %s, symbol: %s\n",
-					accPos.AccountId, b85Conv.AsString(k.Int64()))
+					accPos.AccountId, jda.B85Conv.AsString(k.Int64()))
 			}
 			if preEodTime == 0 {
 				preEodTime = accPos.EodTime
 			} else if preEodTime != accPos.EodTime {
 				fmt.Printf("EOD position mismatch for account: %s, symbol: %s\n",
-					accPos.AccountId, b85Conv.AsString(k.Int64()))
+					accPos.AccountId, jda.B85Conv.AsString(k.Int64()))
 			}
 		}
 	}

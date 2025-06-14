@@ -40,7 +40,9 @@ func (x *CustomerAccountDiff) OnlyPnlNotLess(ratio float64) bool {
 
 func (x *CustomerAccountDiff) String() string {
 	return fmt.Sprintf("marginLevel:%+v, available:%+v, marginReq:%+v, equity:%+v, openPnl:%+v, notionalValue:%+v",
-		x.MarginRatioDiff, x.AvailableForMarginTradingDiff, x.MarginRequirementDiff, x.EquityDiff, x.OpenPNLDiff, x.NotionalValueDiff)
+		convertToPercent(x.MarginRatioDiff), convertToPercent(x.AvailableForMarginTradingDiff),
+		convertToPercent(x.MarginRequirementDiff), convertToPercent(x.EquityDiff),
+		convertToPercent(x.OpenPNLDiff), convertToPercent(x.NotionalValueDiff))
 }
 
 func (x *CustomerAccountDiff) OutRatioString(ratio float64) string {
@@ -68,6 +70,35 @@ func (x *CustomerAccountDiff) OutRatioString(ratio float64) string {
 		return "no significant differences"
 	}
 	return sb.String()
+}
+
+type AccountMainDiff struct {
+	BalanceRatio                   float64 `json:"balanceRatio"` // 账户余额差异率
+	MarginRatio                    float64 `json:"marginRatio"`  // 保证金差异率
+	AvailableForMarginTradingRatio float64 `json:"AvailableForMarginTradingRatio"`
+	MarginRequirementRatio         float64 `json:"marginRequirementRatio"` // 保证金要求差异率
+	EquityRatio                    float64 `json:"equityRatio"`            // 权益差异率
+	OpenPNLRatio                   float64 `json:"openPNLRatio"`           // 未实现盈亏差异率
+	NotionalValueRatio             float64 `json:"notionalValueRatio"`     // 名义价值差异率
+}
+
+func (x AccountMainDiff) String() string {
+	return fmt.Sprintf("balance:%+v, marginLevel:%+v, available:%+v, marginReq:%+v, equity:%+v, openPnl:%+v, notionalValue:%+v",
+		convertToPercent(x.BalanceRatio), convertToPercent(x.MarginRatio),
+		convertToPercent(x.AvailableForMarginTradingRatio), convertToPercent(x.MarginRequirementRatio),
+		convertToPercent(x.EquityRatio), convertToPercent(x.OpenPNLRatio),
+		convertToPercent(x.NotionalValueRatio))
+}
+
+func (x AccountMainDiff) IsLess(kpi float64) bool {
+	// 检查所有差异是否都小于给定的 KPI
+	return absLess(x.BalanceRatio, kpi) &&
+		absLess(x.MarginRatio, kpi) &&
+		absLess(x.AvailableForMarginTradingRatio, kpi) &&
+		absLess(x.MarginRequirementRatio, kpi) &&
+		absLess(x.EquityRatio, kpi) &&
+		absLess(x.OpenPNLRatio, kpi) &&
+		absLess(x.NotionalValueRatio, kpi)
 }
 
 // CustomerAccountPositions 代表账户头寸数据的顶层结构
@@ -161,6 +192,16 @@ func (x *CustomerAccountPositions) SamePositionMapSource(other *CustomerAccountP
 		}
 	}
 	return true
+}
+
+func (x *CustomerAccountPositions) MainDiffRatio(other *CustomerAccountPositions, ratio *AccountMainDiff) {
+	ratio.BalanceRatio = diffPrev(x.Balance, other.Balance)
+	ratio.MarginRatio = diffPrev(x.MarginRatio, other.MarginRatio)
+	ratio.AvailableForMarginTradingRatio = diffPrev(x.AvailableForMarginTrading, other.AvailableForMarginTrading)
+	ratio.MarginRequirementRatio = diffPrev(x.MarginRequirement, other.MarginRequirement)
+	ratio.EquityRatio = diffPrev(x.Equity, other.Equity)
+	ratio.OpenPNLRatio = diffPrev(x.OpenPNL, other.OpenPNL)
+	ratio.NotionalValueRatio = diffPrev(x.NotionalValue, other.NotionalValue)
 }
 
 const openPnlPrecision = 0.015
@@ -329,4 +370,20 @@ func diffRatio(x, y float64) float64 {
 		return (x - y) / 1 // Avoid division by zero, return a large number
 	}
 	return (x - y) / y
+}
+
+func diffPrev(x, y float64) float64 {
+	return (x - y) / y
+}
+
+func absLess(r float64, kpi float64) bool {
+	if math.Abs(r) < kpi {
+		return true
+	}
+	return false
+}
+
+func convertToPercent(value float64) string {
+	// Convert a float64 value to a percentage string with two decimal places
+	return fmt.Sprintf("%.3f%%", value*100)
 }
