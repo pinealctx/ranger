@@ -18,6 +18,7 @@ func main() {
 			scanV2Cmd,
 			scanTradeCmd,
 			tradeMarginCmd,
+			balanceCheckCmd,
 		},
 	}
 	var err = app.Run(os.Args)

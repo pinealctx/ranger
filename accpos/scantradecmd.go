@@ -43,9 +43,12 @@ func processBalanceRecCompare(recs []AccRec) {
 	size := len(recs)
 	var diff jda.AccountMainDiff
 	for i := 1; i < size; i++ {
-		if recs[i].AccPos.Balance != recs[i-1].AccPos.Balance {
+		prvBalance := recs[i-1].AccPos.Balance
+		curBalance := recs[i].AccPos.Balance
+		if curBalance != prvBalance {
 			recs[i].AccPos.MainDiffRatio(recs[i-1].AccPos, &diff)
-			fmt.Printf("Line %d: %s\n", recs[i].Line, diff.String())
+			fmt.Printf("Line %d: balance diff:%+v, %s\n",
+				recs[i].Line, curBalance-prvBalance, diff.String())
 		}
 	}
 }

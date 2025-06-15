@@ -1,5 +1,12 @@
 package jda
 
+import (
+	"encoding/json"
+	"fmt"
+	"regexp"
+	"strings"
+)
+
 // MarketDataLiquidity 表示市场流动性信息
 type MarketDataLiquidity struct {
 	Px  NumericString `json:"px"`
@@ -100,4 +107,60 @@ type ClientReport struct {
 	Internal                []InternalExecution     `json:"internal"`
 	Ask                     NumericString           `json:"ask"`
 	Bid                     NumericString           `json:"bid"`
+}
+
+type MixCliRptPosition struct {
+	CliReport *ClientReport
+	AccPos    *CustomerAccountPositions
+	Before    bool
+}
+
+func NewMixCliRptPosition(cliRpt *ClientReport, accPos *CustomerAccountPositions, before bool) *MixCliRptPosition {
+	return &MixCliRptPosition{
+		CliReport: cliRpt,
+		AccPos:    accPos,
+		Before:    before,
+	}
+}
+
+var (
+	beforeCliRptReg = regexp.MustCompile(`trade before: (\{.*?\}), account map:(\{.*\})`)
+	afterCliRptReg  = regexp.MustCompile(`trade after: (\{.*?\}), account map:(\{.*\})`)
+)
+
+func FigureCliRptAndAcc(line string) (*MixCliRptPosition, error) {
+	if strings.Contains(line, `Client Report with trade before`) {
+		exp, accPos, err := extractCliRptAndAcc(beforeCliRptReg, line)
+		if err != nil {
+			return nil, err
+		}
+		return NewMixCliRptPosition(exp, accPos, true), nil
+	} else if strings.Contains(line, `Client Report with trade after`) {
+		exp, accPos, err := extractCliRptAndAcc(afterCliRptReg, line)
+		if err != nil {
+			return nil, err
+		}
+		return NewMixCliRptPosition(exp, accPos, false), nil
+	}
+	return nil, nil
+}
+
+func extractCliRptAndAcc(reg *regexp.Regexp, line string) (*ClientReport, *CustomerAccountPositions, error) {
+	matches := reg.FindStringSubmatch(line)
+	if len(matches) < 3 {
+		return nil, nil, fmt.Errorf("invalid cli rpt line: %s", line)
+	}
+	cliRptStr := matches[1]
+	accPosStr := matches[2]
+	cliRpt := &ClientReport{}
+	err := json.Unmarshal([]byte(cliRptStr), cliRpt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal client report: %w", err)
+	}
+	accPos := &CustomerAccountPositions{}
+	err = json.Unmarshal([]byte(accPosStr), accPos)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal account positions: %w", err)
+	}
+	return cliRpt, accPos, nil
 }

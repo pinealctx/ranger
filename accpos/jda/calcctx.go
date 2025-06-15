@@ -113,3 +113,21 @@ func (x *SymbolCtx) quoteAsUsd(v float64) (float64, float64) {
 		panic(fmt.Sprintf("Unknown quote type: %v", x.Quote))
 	}
 }
+
+func (x *SymbolCtx) quoteAvgUsd(v float64) (float64, float64) {
+	switch x.Quote {
+	case SqQuote:
+		return v, 1
+	case SqBase:
+		avg := (x.Bid + x.Ask) / 2
+		return v / avg, 1 / avg
+	case SqRefQuote:
+		avg := (x.RefBid + x.RefAsk) / 2
+		return v * avg, avg
+	case SqRefBase:
+		avg := (x.RefBid + x.RefAsk) / 2
+		return v / avg, 1 / avg
+	default:
+		panic(fmt.Sprintf("Unknown quote type: %v", x.Quote))
+	}
+}
