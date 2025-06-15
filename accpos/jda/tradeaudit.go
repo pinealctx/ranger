@@ -1,6 +1,9 @@
 package jda
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 const (
 	firstPos  = 0
@@ -67,13 +70,14 @@ func (x *TradeAudit) Validate() bool {
 		}
 		commission, ok := x.validateCommission()
 		if !ok {
-			fmt.Printf("commission validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("new position commission validation failed for symbol %s\n", x.symbol)
 			return false
 		}
 		if !x.validateBalance(-commission) {
-			fmt.Printf("balance validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("new position balance validation failed for symbol %s\n", x.symbol)
 			return false
 		}
+		fmt.Printf("new position validation succeeded for symbol %s\n", x.symbol)
 	case sameDire:
 		if !x.validateSamePosition() {
 			fmt.Printf("same position validation failed for symbol %s\n", x.symbol)
@@ -81,28 +85,35 @@ func (x *TradeAudit) Validate() bool {
 		}
 		commission, ok := x.validateCommission()
 		if !ok {
-			fmt.Printf("commission validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("same position commission validation failed for symbol %s\n", x.symbol)
 			return false
 		}
 		if !x.validateBalance(-commission) {
-			fmt.Printf("balance validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("same position balance validation failed for symbol %s\n", x.symbol)
 			return false
 		}
+		fmt.Printf("same position validation succeeded for symbol %s\n", x.symbol)
 	case closeDire:
 		quote, ok := x.validateReversePosition()
 		if !ok {
-			fmt.Printf("reverse position validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("close position validation failed for symbol %s\n", x.symbol)
 			return false
 		}
 		commission, ok := x.validateCommission()
 		if !ok {
-			fmt.Printf("commission validation failed for symbol %s\n", x.symbol)
+			fmt.Printf("close position commission validation failed for symbol %s\n", x.symbol)
 			return false
 		}
-		if !x.validateBalance(quote.Value - commission) {
-			fmt.Printf("balance validation failed for symbol %s\n", x.symbol)
+		var fee float64
+		if x.symbolCtx.Quote != SqQuote {
+			// charge fee
+			fee = 0.003 * math.Abs(quote.Value)
+		}
+		if !x.validateBalance(quote.Value - commission - fee) {
+			fmt.Printf("close position balance validation failed for symbol %s\n", x.symbol)
 			return false
 		}
+		fmt.Printf("close position validation succeeded for symbol %s\n", x.symbol)
 	default:
 		panic(fmt.Sprintf("unknown trade result: %+v", x.tradeRst))
 	}
