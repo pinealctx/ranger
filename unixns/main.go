@@ -30,6 +30,18 @@ var (
 			},
 		},
 	}
+
+	convertNYTimeCmd = &cli.Command{
+		Name:   "ny",
+		Usage:  "convert a specific time string of NewYork timezone to UTC time",
+		Action: convertNYTimeAction,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "t",
+				Usage: `Specify a New York time, like"2025-07-01T13:00:00""`,
+			},
+		},
+	}
 )
 
 func main() {
@@ -39,6 +51,7 @@ func main() {
 		Commands: cli.Commands{
 			convertNsCmd,
 			parseUnixNanoCmd,
+			convertNYTimeCmd,
 		},
 	}
 	var err = app.Run(os.Args)
@@ -77,5 +90,25 @@ func parseUTCtoUnixNanoAction(c *cli.Context) error {
 	// convert to nano unix timestamp
 	ts := ut.UnixNano()
 	fmt.Println("nano unix timestamp:", ts)
+	return nil
+}
+
+// convert a NewYork time to UTC time
+func convertNYTimeAction(c *cli.Context) error {
+	var t = c.String("t")
+	if t == "" {
+		return fmt.Errorf("empty time string")
+	}
+	timezone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		return err
+	}
+	tm, err := time.ParseInLocation("2006-01-02T15:04:05", t, timezone)
+	if err != nil {
+		return err
+	}
+	// convert to UTC
+	ut := tm.UTC()
+	fmt.Printf("New York time is %+v, UTC time is %+v\n", tm, ut)
 	return nil
 }
