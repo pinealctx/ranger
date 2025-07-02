@@ -40,6 +40,10 @@ var (
 				Name:  "t",
 				Usage: `Specify a New York time, like"2025-07-01T13:00:00""`,
 			},
+			&cli.BoolFlag{
+				Name:  "isWindows",
+				Usage: `If it is true, use "Eastern Standard Time" as timezone string, else "America/New_York"`,
+			},
 		},
 	}
 )
@@ -95,15 +99,24 @@ func parseUTCtoUnixNanoAction(c *cli.Context) error {
 
 // convert a NewYork time to UTC time
 func convertNYTimeAction(c *cli.Context) error {
-	var t = c.String("t")
-	if t == "" {
+	var timeStr = c.String("t")
+	if timeStr == "" {
 		return fmt.Errorf("empty time string")
 	}
-	timezone, err := time.LoadLocation("America/New_York")
+	var isWindows = c.Bool("isWindows")
+	if isWindows {
+		return convertNyTime(timeStr, "Eastern Standard Time")
+	} else {
+		return convertNyTime(timeStr, "America/New_York")
+	}
+}
+
+func convertNyTime(timeStr string, timeZoneStr string) error {
+	timezone, err := time.LoadLocation(timeZoneStr)
 	if err != nil {
 		return err
 	}
-	tm, err := time.ParseInLocation("2006-01-02T15:04:05", t, timezone)
+	tm, err := time.ParseInLocation("2006-01-02T15:04:05", timeStr, timezone)
 	if err != nil {
 		return err
 	}
